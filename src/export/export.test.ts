@@ -2,9 +2,11 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
-import { orcamentoExemplo } from "../domain/defaults";
+import { AJUSTES_PADRAO, orcamentoExemplo, valoresDeEquipe } from "../domain/defaults";
+import { PLANOS } from "../domain/pagamento";
 import { gerarExcel } from "./excel";
 import { gerarPdf, limpar } from "./pdf";
+import { gerarProposta } from "./proposta";
 
 // Os arquivos gerados ficam numa pasta para conferência manual (SAIDA_EXPORT) ou são descartados.
 const SAIDA = process.env.SAIDA_EXPORT;
@@ -77,6 +79,24 @@ describe("Excel do caso de teste", () => {
     expect((custos.getCell(`D${lm}`).value as { result: number }).result).toBe(300);
   });
 
+  it("mostra o lucro cobrando o recomendado e o valor combinado", async () => {
+    const wb = await lerExcel(await gerarExcel({ ...orcamentoExemplo(), valorFechado: 70000 }));
+    const resumo = wb.getWorksheet("Resumo")!;
+    const v = (addr: string) => resumo.getCell(addr).value as { formula: string; result: number };
+    expect(v("B41").formula).toBe("B40-B22-B40*B10");
+    expect(v("B41").result).toBeCloseTo(11100, 6);
+    expect(v("B42").result).toBeCloseTo(0.15, 6);
+    expect(resumo.getCell("B43").value).toBe(70000);
+    expect(v("B44").result).toBeCloseTo(7700, 6);
+  });
+
+  it("sem ajudante muda os rótulos", async () => {
+    const wb = await lerExcel(await gerarExcel({ ...orcamentoExemplo(), ...valoresDeEquipe(true) }));
+    const custos = wb.getWorksheet("Custos")!;
+    expect(custos.getCell("A12").value).toBe("Eletricistas");
+    expect((custos.getCell("B13").value as { result: number }).result).toBe(285 * 15);
+  });
+
   it("forma de compra Meu CNPJ", async () => {
     const wb = await lerExcel(await gerarExcel({ ...orcamentoExemplo(), formaCompra: "meu_cnpj" }));
     const resumo = wb.getWorksheet("Resumo")!;
@@ -95,6 +115,30 @@ describe("PDF do caso de teste", () => {
     }
     expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
     expect(bytes.length).toBeGreaterThan(5000);
+  });
+
+  it("gera a proposta com logo, parcelas e aceite", async () => {
+    // PNG de 1×1 pixel
+    const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+    const o = {
+      ...orcamentoExemplo(),
+      escopo: "Instalação completa",
+      parcelas: PLANOS[0].parcelas,
+      aceite: { nome: "Maria", assinatura: png, em: Date.now() },
+    };
+    const blob = await gerarProposta(o, { nome: "Elétrica Silva", cnpj: "00.000.000/0001-00", telefone: "11 90000-0000", logo: png });
+    const bytes = Buffer.from(await blob.arrayBuffer());
+    if (SAIDA) {
+      mkdirSync(SAIDA, { recursive: true });
+      writeFileSync(join(SAIDA, "Proposta_exemplo.pdf"), bytes);
+    }
+    expect(bytes.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(bytes.length).toBeGreaterThan(5000);
+  });
+
+  it("proposta funciona sem dados da empresa e sem preço possível", async () => {
+    const blob = await gerarProposta({ ...orcamentoExemplo(), imposto: 90 }, AJUSTES_PADRAO.empresa);
+    expect(Buffer.from(await blob.arrayBuffer()).subarray(0, 5).toString()).toBe("%PDF-");
   });
 
   it("troca caracteres que quebram a Helvetica", () => {

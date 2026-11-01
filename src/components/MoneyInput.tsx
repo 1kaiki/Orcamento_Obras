@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { numero, parseValorBR } from "../domain/format";
+import { useEffect, useId, useRef, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { numero, parseValorBR } from "@/domain/format";
+import { cn } from "@/lib/utils";
+import Campo from "./Campo";
 
 interface Props {
   value: number;
@@ -38,21 +41,23 @@ export default function MoneyInput({
 }: Props) {
   const [texto, setTexto] = useState(() => formatar(value, variante, vazioSeZero));
   const focado = useRef(false);
-  const id = useRef(`campo-${Math.random().toString(36).slice(2, 9)}`).current;
+  const id = useId();
 
   useEffect(() => {
     if (!focado.current) setTexto(formatar(value, variante, vazioSeZero));
   }, [value, variante, vazioSeZero]);
 
   return (
-    <div className="field">
-      {label && <label htmlFor={id}>{label}</label>}
-      <div className="input-wrap">
-        {prefixo && <span className="affix">{prefixo}</span>}
-        <input
+    <Campo id={id} label={label} ajuda={ajuda}>
+      <div className="relative">
+        {prefixo && (
+          <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-body text-muted-foreground">
+            {prefixo}
+          </span>
+        )}
+        <Input
           id={id}
-          className="num"
-          type="text"
+          className={cn("numeros text-right font-semibold", prefixo && "pl-11", sufixo && "pr-9")}
           inputMode="decimal"
           autoComplete="off"
           aria-label={label ? undefined : ariaLabel}
@@ -73,9 +78,12 @@ export default function MoneyInput({
             setTexto(formatar(parseValorBR(texto), variante, vazioSeZero));
           }}
         />
-        {sufixo && <span className="affix">{sufixo}</span>}
+        {sufixo && (
+          <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-body text-muted-foreground">
+            {sufixo}
+          </span>
+        )}
       </div>
-      {ajuda && <span className="field-help">{ajuda}</span>}
-    </div>
+    </Campo>
   );
 }

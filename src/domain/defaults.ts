@@ -1,4 +1,4 @@
-import type { Ajustes, Orcamento } from "./types";
+import type { Ajustes, Modelo, Orcamento } from "./types";
 
 export const AJUSTES_PADRAO: Ajustes = {
   diariaEletricista: 250,
@@ -12,6 +12,8 @@ export const AJUSTES_PADRAO: Ajustes = {
   imposto: 15,
   margemMin: 15,
   margemMax: 20,
+  validadeDias: 15,
+  empresa: { nome: "", cnpj: "", telefone: "", logo: "" },
 };
 
 export const DIAS_PADRAO = 15;
@@ -32,8 +34,11 @@ export function novoOrcamento(ajustes: Ajustes = AJUSTES_PADRAO): Orcamento {
     atualizadoEm: agora,
     obra: "",
     cliente: "",
+    telefone: "",
+    escopo: "",
     dias: DIAS_PADRAO,
     duplas: DUPLAS_PADRAO,
+    semAjudante: false,
     diariaEletricista: ajustes.diariaEletricista,
     diariaAjudante: ajustes.diariaAjudante,
     passagem: ajustes.passagem,
@@ -41,6 +46,7 @@ export function novoOrcamento(ajustes: Ajustes = AJUSTES_PADRAO): Orcamento {
     formaCompra: "faturamento_direto",
     materiais: [],
     ferramentas: [],
+    checklist: [],
     imposto: ajustes.imposto,
     markupMO: ajustes.markupMO,
     markupFerramentas: ajustes.markupFerramentas,
@@ -48,6 +54,61 @@ export function novoOrcamento(ajustes: Ajustes = AJUSTES_PADRAO): Orcamento {
     markupMaterialDireto: ajustes.markupMaterialDireto,
     margemMin: ajustes.margemMin,
     margemMax: ajustes.margemMax,
+    situacao: "rascunho",
+    enviadoEm: null,
+    retornoEm: null,
+    decididoEm: null,
+    motivoPerda: null,
+    validadeDias: ajustes.validadeDias,
+    valorFechado: null,
+    parcelas: [],
+    aceite: null,
+    diasReais: null,
+    gastos: [],
+    aditivos: [],
+    concluidaEm: null,
+  };
+}
+
+/**
+ * Liga ou desliga o ajudante mudando só os valores de entrada: a fórmula de `calcular` continua a mesma.
+ * Passagem e almoço são da dupla, então sem ajudante ficam pela metade. Os campos continuam editáveis.
+ */
+export function valoresDeEquipe(semAjudante: boolean, ajustes: Ajustes = AJUSTES_PADRAO): Pick<Orcamento, "semAjudante" | "diariaAjudante" | "passagem" | "almoco"> {
+  return {
+    semAjudante,
+    diariaAjudante: semAjudante ? 0 : ajustes.diariaAjudante,
+    passagem: semAjudante ? ajustes.passagem / 2 : ajustes.passagem,
+    almoco: semAjudante ? ajustes.almoco / 2 : ajustes.almoco,
+  };
+}
+
+/** Modelo usa materiais e dias da obra parecida, mas sempre os valores atuais dos Ajustes. */
+export function orcamentoDeModelo(m: Modelo, ajustes: Ajustes = AJUSTES_PADRAO): Orcamento {
+  return {
+    ...novoOrcamento(ajustes),
+    ...valoresDeEquipe(m.semAjudante, ajustes),
+    escopo: m.escopo,
+    dias: m.dias,
+    duplas: m.duplas,
+    formaCompra: m.formaCompra,
+    materiais: structuredClone(m.materiais),
+    ferramentas: structuredClone(m.ferramentas),
+  };
+}
+
+export function modeloDeOrcamento(o: Orcamento, nome: string): Modelo {
+  return {
+    id: novoId(),
+    nome,
+    criadoEm: Date.now(),
+    escopo: o.escopo,
+    dias: o.dias,
+    duplas: o.duplas,
+    semAjudante: o.semAjudante,
+    formaCompra: o.formaCompra,
+    materiais: structuredClone(o.materiais),
+    ferramentas: structuredClone(o.ferramentas),
   };
 }
 

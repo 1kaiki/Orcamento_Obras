@@ -1,9 +1,11 @@
-import MoneyInput from "../components/MoneyInput";
-import Stepper from "../components/Stepper";
-import StepFrame from "../components/StepFrame";
-import { brl } from "../domain/format";
-import { calcular } from "../domain/pricing";
-import type { Orcamento } from "../domain/types";
+import MoneyInput from "@/components/MoneyInput";
+import StepFrame from "@/components/StepFrame";
+import Stepper from "@/components/Stepper";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Card } from "@/components/ui/card";
+import { brl } from "@/domain/format";
+import { calcular } from "@/domain/pricing";
+import type { Orcamento } from "@/domain/types";
 
 interface Props {
   orc: Orcamento;
@@ -18,39 +20,36 @@ export default function StepMaoDeObra({ orc, editar, onVoltar, onProximo }: Prop
     <StepFrame
       orc={orc}
       passo={2}
-      titulo="Mão de obra"
-      texto="Cada dupla é 1 eletricista + 1 ajudante."
+      titulo="Quanto tempo de serviço?"
+      texto={orc.semAjudante ? "Sem ajudante: conte só os eletricistas." : "Cada dupla é 1 eletricista + 1 ajudante."}
       botao="Próximo"
+      total={{ rotulo: "Mão de obra", valor: r.mo }}
       onVoltar={onVoltar}
       onProximo={onProximo}
     >
-      <div className="live-strip" aria-live="polite">
-        <div>
-          <small>Dupla por dia</small>
-          <span className="mono">{brl(r.custoDuplaDia)}</span>
-        </div>
-        <div>
-          <small>Mão de obra</small>
-          <span className="mono">{brl(r.mo)}</span>
-        </div>
-      </div>
+      <Card className="divide-y">
+        <Stepper label="Dias de serviço" value={orc.dias} onChange={(dias) => editar({ dias })} />
+        <Stepper label={orc.semAjudante ? "Eletricistas" : "Duplas"} value={orc.duplas} onChange={(duplas) => editar({ duplas })} />
+      </Card>
 
-      <div className="card stack">
-        <div className="row">
-          <Stepper label="Dias de serviço" value={orc.dias} onChange={(dias) => editar({ dias })} />
-          <Stepper label="Duplas" value={orc.duplas} onChange={(duplas) => editar({ duplas })} />
-        </div>
-      </div>
-
-      <div className="card stack">
-        <h3 className="card-title" style={{ marginBottom: 0 }}>
-          Custo da dupla por dia
-        </h3>
-        <MoneyInput label="Diária do eletricista" value={orc.diariaEletricista} onChange={(v) => editar({ diariaEletricista: v })} />
-        <MoneyInput label="Diária do ajudante" value={orc.diariaAjudante} onChange={(v) => editar({ diariaAjudante: v })} />
-        <MoneyInput label="Passagem (dupla, por dia)" value={orc.passagem} onChange={(v) => editar({ passagem: v })} />
-        <MoneyInput label="Almoço (dupla, por dia)" value={orc.almoco} onChange={(v) => editar({ almoco: v })} />
-      </div>
+      <Card>
+        <Accordion type="single" collapsible>
+          <AccordionItem value="custo">
+            <AccordionTrigger>
+              <span className="min-w-0">
+                <span className="block text-body font-semibold">{orc.semAjudante ? "Custo do eletricista por dia" : "Custo da dupla por dia"}</span>
+                <span className="numeros block text-label text-muted-foreground">{brl(r.custoDuplaDia)}</span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent className="flex flex-col gap-3">
+              <MoneyInput label="Diária do eletricista" value={orc.diariaEletricista} onChange={(v) => editar({ diariaEletricista: v })} />
+              {!orc.semAjudante && <MoneyInput label="Diária do ajudante" value={orc.diariaAjudante} onChange={(v) => editar({ diariaAjudante: v })} />}
+              <MoneyInput label={`Passagem (${orc.semAjudante ? "eletricista" : "dupla"}, por dia)`} value={orc.passagem} onChange={(v) => editar({ passagem: v })} />
+              <MoneyInput label={`Almoço (${orc.semAjudante ? "eletricista" : "dupla"}, por dia)`} value={orc.almoco} onChange={(v) => editar({ almoco: v })} />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </Card>
     </StepFrame>
   );
 }

@@ -61,9 +61,9 @@ export function semAcentos(texto: string): string {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
-export function nomeArquivo(obra: string, ext: string): string {
+export function nomeArquivo(obra: string, ext: string, prefixo = "Orcamento"): string {
   const base = semAcentos(obra.trim() || "Sem nome")
     .replace(/[^A-Za-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  return `Orcamento_${base || "Sem-nome"}.${ext}`;
+  return `${prefixo}_${base || "Sem-nome"}.${ext}`;
 }

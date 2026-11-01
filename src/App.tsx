@@ -1,16 +1,29 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AJUSTES_PADRAO, novoOrcamento, orcamentoExemplo } from "./domain/defaults";
+import { toast } from "./components/ui/sonner";
+import { AJUSTES_PADRAO, novoOrcamento, orcamentoDeModelo, orcamentoExemplo } from "./domain/defaults";
 import type { Ajustes, Orcamento } from "./domain/types";
+import Aceite from "./screens/Aceite";
 import Home from "./screens/Home";
+import ModoCliente from "./screens/ModoCliente";
+import Obra from "./screens/Obra";
+import Pagamento from "./screens/Pagamento";
 import Result from "./screens/Result";
 import Settings from "./screens/Settings";
 import StepFerramentas from "./screens/StepFerramentas";
 import StepMaoDeObra from "./screens/StepMaoDeObra";
 import StepMateriais from "./screens/StepMateriais";
 import StepObra from "./screens/StepObra";
-import { duplicarOrcamento, excluirOrcamento, lerAjustes, restaurarAjustesPadrao, salvarAjustes, salvarOrcamento } from "./storage/repo";
+import { duplicarOrcamento, excluirOrcamento, guardarNoCatalogo, lerAjustes, restaurarAjustesPadrao, salvarAjustes, salvarOrcamento } from "./storage/repo";
 
-type Tela = { nome: "home" } | { nome: "passo"; n: 1 | 2 | 3 | 4 } | { nome: "resultado" } | { nome: "ajustes" };
+type Tela =
+  | { nome: "home" }
+  | { nome: "passo"; n: 1 | 2 | 3 | 4 }
+  | { nome: "resultado" }
+  | { nome: "ajustes" }
+  | { nome: "cliente" }
+  | { nome: "pagamento" }
+  | { nome: "aceite" }
+  | { nome: "obra" };
 
 interface EstadoHistorico {
   tela: Tela;
@@ -35,6 +48,7 @@ export default function App() {
     history.replaceState({ tela: HOME, idx: 0 } satisfies EstadoHistorico, "");
     const onPop = (e: PopStateEvent) => {
       const est = e.state as EstadoHistorico | null;
+      document.documentElement.dataset.nav = (est?.idx ?? 0) < idx.current ? "voltar" : "avancar";
       idx.current = est?.idx ?? 0;
       setTela(est?.tela ?? HOME);
       window.scrollTo(0, 0);
@@ -71,6 +85,7 @@ export default function App() {
 
   const ir = useCallback((t: Tela, substituir = false) => {
     if (!substituir) idx.current += 1;
+    document.documentElement.dataset.nav = "avancar";
     history[substituir ? "replaceState" : "pushState"]({ tela: t, idx: idx.current } satisfies EstadoHistorico, "");
     setTela(t);
     window.scrollTo(0, 0);
@@ -98,6 +113,7 @@ export default function App() {
   const proximo = (n: 1 | 2 | 3) => {
     sujo.current = true; // passar do passo 1 já guarda o orçamento, mesmo sem mudar nada
     setOrc((o) => (o ? { ...o } : o));
+    if (n === 3 && orc) void guardarNoCatalogo(orc);
     ir(passo((n + 1) as 2 | 3 | 4));
   };
 
@@ -108,6 +124,7 @@ export default function App() {
     if (copia) {
       setOrc(copia);
       ir({ nome: "resultado" }, true);
+      toast.success("Orçamento duplicado");
     }
   }
 
@@ -118,6 +135,7 @@ export default function App() {
     setOrc(null);
     setHomeKey((k) => k + 1);
     ir(HOME, true);
+    toast.success("Orçamento excluído");
   }
 
   async function criarExemplo() {
@@ -128,7 +146,7 @@ export default function App() {
   }
 
   // Telas que dependem de um orçamento voltam para a Home se não houver nenhum (ex.: página recarregada)
-  const precisaOrc = tela.nome === "passo" || tela.nome === "resultado";
+  const precisaOrc = tela.nome !== "home" && tela.nome !== "ajustes";
   useEffect(() => {
     if (precisaOrc && !orc) ir(HOME, true);
   }, [precisaOrc, orc, ir]);
@@ -155,11 +173,11 @@ export default function App() {
     const comum = { orc, editar, onVoltar: voltar };
     switch (tela.n) {
       case 1:
-        return <StepObra {...comum} onProximo={() => proximo(1)} />;
+        return <StepObra {...comum} ajustes={ajustes} onProximo={() => proximo(1)} />;
       case 2:
         return <StepMaoDeObra {...comum} onProximo={() => proximo(2)} />;
       case 3:
-        return <StepMateriais {...comum} onProximo={() => proximo(3)} />;
+        return <StepMateriais {...comum} ajustes={ajustes} onProximo={() => proximo(3)} />;
       case 4:
         return (
           <StepFerramentas
@@ -178,19 +196,36 @@ export default function App() {
     return (
       <Result
         orc={orc}
+        ajustes={ajustes}
+        editar={editar}
         onVoltar={() => void irHome()}
         onEditar={() => ir(passo(1))}
         onDuplicar={() => void duplicar()}
         onExcluir={() => void excluir()}
+        onCliente={() => ir({ nome: "cliente" })}
+        onPagamento={() => ir({ nome: "pagamento" })}
+        onAceite={() => ir({ nome: "aceite" })}
+        onObra={() => ir({ nome: "obra" })}
       />
     );
   }
 
+  if (tela.nome === "cliente" && orc) return <ModoCliente orc={orc} ajustes={ajustes} onSair={voltar} />;
+  if (tela.nome === "pagamento" && orc) return <Pagamento orc={orc} editar={editar} onVoltar={voltar} />;
+  if (tela.nome === "aceite" && orc) return <Aceite orc={orc} ajustes={ajustes} editar={editar} onVoltar={voltar} />;
+  if (tela.nome === "obra" && orc) return <Obra orc={orc} ajustes={ajustes} editar={editar} onVoltar={voltar} />;
+
   return (
     <Home
       key={homeKey}
+      empresa={ajustes.empresa}
       onNovo={() => {
         setOrc(novoOrcamento(ajustes));
+        sujo.current = false;
+        ir(passo(1));
+      }}
+      onNovoDeModelo={(m) => {
+        setOrc(orcamentoDeModelo(m, ajustes));
         sujo.current = false;
         ir(passo(1));
       }}

@@ -1,4 +1,4 @@
-// Gera os ícones PNG do app (raio amarelo #F2B01E em fundo #141B24) sem depender de bibliotecas de imagem.
+// Gera os ícones PNG do app (raio amarelo #FFBF00 em fundo #1C2026) sem depender de bibliotecas de imagem.
 // Uso: npm run icons
 import { writeFileSync } from "node:fs";
 import { deflateSync, crc32 } from "node:zlib";
@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const publico = join(dirname(fileURLToPath(import.meta.url)), "..", "public");
-const FUNDO = [0x14, 0x1b, 0x24];
-const RAIO = [0xf2, 0xb0, 0x1e];
+const FUNDO = [0x1c, 0x20, 0x26];
+const RAIO = [0xff, 0xbf, 0x00];
 
 // Raio em coordenadas de 24x24 (mesmo desenho do ícone da barra superior)
 const POLIGONO = [

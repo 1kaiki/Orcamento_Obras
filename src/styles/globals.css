@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Claro: pensado para o sol. Texto quase preto, bordas de campo com 3:1. */
+    --background: 216 20% 93%;
+    --foreground: 216 18% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 216 18% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 18% 11%;
+    --muted: 216 22% 95%;
+    --muted-foreground: 216 12% 33%;
+    --border: 216 14% 80%;
+    --input: 216 10% 52%;
+    --ring: 216 18% 11%;
+    --scrim: 216 30% 5%;
+
+    --primary: 45 100% 50%;
+    --primary-foreground: 216 18% 11%;
+    --primary-edge: 38 100% 36%;
+    --secondary: 216 18% 88%;
+    --secondary-foreground: 216 18% 11%;
+
+    /* Painel grafite: resumo da Home e rodapé dos passos, nos dois modos */
+    --panel: 216 16% 13%;
+    --panel-foreground: 210 20% 97%;
+    --panel-muted: 214 14% 74%;
+    --panel-border: 216 12% 26%;
+
+    --success: 150 75% 22%;
+    --success-soft: 150 45% 90%;
+    --warning: 28 90% 28%;
+    --warning-soft: 42 95% 87%;
+    --danger: 4 72% 37%;
+    --danger-soft: 4 80% 93%;
+    --danger-foreground: 0 0% 100%;
+
+    /* Trena do medidor */
+    --tape: 45 100% 50%;
+    --tape-ink: 216 18% 11%;
+    --tape-band: 150 70% 26%;
+    --tape-band-ink: 0 0% 100%;
+
+    /* Barra "para onde vai o dinheiro": validada para daltonismo nos dois temas */
+    --barra-custo: 216 48% 48%;
+    --barra-imposto: 35 90% 41%;
+    --barra-lucro: 150 70% 26%;
+
+    --radius-sm: 0.5rem;
+    --radius-md: 0.75rem;
+    --radius-lg: 1rem;
+    --radius-xl: 1.5rem;
+
+    --shadow-card: 0 1px 2px hsl(216 30% 20% / 0.08);
+    --shadow-raised: 0 -6px 24px hsl(216 30% 10% / 0.22);
+    --shadow-press: inset 0 -3px 0 hsl(var(--primary-edge));
+
+    --space-gutter: 1rem;
+    --space-section: 1.5rem;
+    --size-touch: 3rem;
+    --size-field: 3.5rem;
+    --size-cta: 3.5rem;
+    --size-bar: 7.5rem;
+    --size-bar-lg: 10.5rem;
+    --size-content: 36rem;
+
+    color-scheme: light;
+  }
+
+  /* Em telas estreitas o rodapé dos passos pode ocupar duas linhas */
+  @media (max-width: 374px) {
+    :root {
+      --size-bar: 11.5rem;
+      --size-bar-lg: 14.5rem;
+    }
+  }
+
+  .dark {
+    --background: 216 14% 9%;
+    --foreground: 210 20% 96%;
+    --card: 216 12% 14%;
+    --card-foreground: 210 20% 96%;
+    --popover: 216 12% 16%;
+    --popover-foreground: 210 20% 96%;
+    --muted: 216 11% 19%;
+    --muted-foreground: 214 12% 72%;
+    --border: 216 10% 25%;
+    --input: 215 9% 48%;
+    --ring: 45 100% 50%;
+    --scrim: 216 30% 3%;
+
+    --primary-edge: 38 100% 34%;
+    --secondary: 216 11% 22%;
+    --secondary-foreground: 210 20% 96%;
+
+    --panel: 216 12% 17%;
+    --panel-border: 216 10% 30%;
+
+    --success: 148 55% 64%;
+    --success-soft: 150 35% 16%;
+    --warning: 38 95% 64%;
+    --warning-soft: 35 50% 16%;
+    --danger: 5 90% 74%;
+    --danger-soft: 5 45% 18%;
+    --danger-foreground: 216 18% 11%;
+
+    --tape-band: 150 60% 30%;
+
+    --barra-custo: 215 62% 60%;
+    --barra-imposto: 34 72% 44%;
+    --barra-lucro: 168 76% 36%;
+
+    --shadow-card: 0 0 0 transparent;
+    --shadow-raised: 0 -6px 24px hsl(216 30% 2% / 0.6);
+
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply min-h-dvh bg-background font-sans text-body text-foreground antialiased;
+    overflow-x: clip;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    @apply outline outline-[3px] outline-offset-2 outline-ring;
+  }
+}
+
+@layer components {
+  /* Dinheiro e medidas: sempre com dígitos da mesma largura */
+  .numeros {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+
+  /* Célula de um dígito na fonte display (ver components/Dinheiro.tsx) */
+  .digito {
+    display: inline-block;
+    width: 0.49em;
+    text-align: center;
+  }
+
+  /* Entrada de cada passo. O sentido vem de <html data-nav>, definido na navegação do App. */
+  .passo-entra {
+    animation: passo-frente 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  [data-nav="voltar"] .passo-entra {
+    animation-name: passo-tras;
+  }
+
+  /* Pulso curto no valor do rodapé quando ele muda */
+  .valor-pulsa {
+    animation: valor-pulsa 220ms ease-out;
+  }
+
+  /* Marcas impressas na trena: uma a cada 1%, mais forte a cada 5% */
+  .trena-marcas {
+    background-image:
+      linear-gradient(to right, currentColor 1.5px, transparent 1.5px),
+      linear-gradient(to right, currentColor 1px, transparent 1px);
+    background-size:
+      calc(100% / var(--trena-grupos)) 45%,
+      calc(100% / var(--trena-grupos) / 5) 22%;
+    background-repeat: repeat-x;
+    background-position: left top;
+  }
+
+  .trena-marcador {
+    transition: left 250ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: trena-entra 450ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+
+@keyframes passo-frente {
+  from {
+    opacity: 0;
+    transform: translateX(1.25rem);
+  }
+}
+@keyframes passo-tras {
+  from {
+    opacity: 0;
+    transform: translateX(-1.25rem);
+  }
+}
+@keyframes valor-pulsa {
+  from {
+    transform: scale(1.05);
+  }
+}
+@keyframes trena-entra {
+  from {
+    left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

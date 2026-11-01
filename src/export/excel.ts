@@ -1,6 +1,7 @@
 import type { Cell, Worksheet } from "exceljs";
 import { MARKUP_ADITIVO } from "../domain/defaults";
 import { dataBR } from "../domain/format";
+import { simularPreco } from "../domain/negociacao";
 import { calcular, TEXTO_STATUS } from "../domain/pricing";
 import type { Orcamento } from "../domain/types";
 
@@ -83,13 +84,14 @@ export async function gerarExcel(o: Orcamento): Promise<Blob> {
   escrever(custos, "A1", "Custos da obra (A)", { negrito: true, semBorda: true }).font = { name: "Arial", size: 14, bold: true };
   escrever(custos, "A2", sub, { semBorda: true });
 
+  const quem = o.semAjudante ? "eletricista" : "dupla";
   secao(custos, 4, "1. Mão de obra (MO)", "D");
   cabecalho(custos, 5, ["Item", "Valor", "Obs."]);
   const moLinhas: [string, number, string][] = [
     ["Diária do eletricista", o.diariaEletricista, "por dia"],
-    ["Diária do ajudante", o.diariaAjudante, "por dia"],
-    ["Passagem (dupla)", o.passagem, "por dia"],
-    ["Almoço (dupla)", o.almoco, "por dia"],
+    ["Diária do ajudante", o.diariaAjudante, o.semAjudante ? "sem ajudante nesta obra" : "por dia"],
+    [`Passagem (${quem})`, o.passagem, "por dia"],
+    [`Almoço (${quem})`, o.almoco, "por dia"],
   ];
   moLinhas.forEach(([nome, valor, obs], i) => {
     const l = 6 + i;
@@ -97,15 +99,15 @@ export async function gerarExcel(o: Orcamento): Promise<Blob> {
     escrever(custos, `B${l}`, valor, { estilo: "entrada", formato: MOEDA });
     escrever(custos, `C${l}`, obs);
   });
-  escrever(custos, "A10", "Custo por dia da dupla", { estilo: "total" });
+  escrever(custos, "A10", `Custo por dia (${quem})`, { estilo: "total" });
   escrever(custos, "B10", { formula: "SUM(B6:B9)", result: r.custoDuplaDia }, { estilo: "total", formato: MOEDA });
   escrever(custos, "A11", "Dias de serviço");
   escrever(custos, "B11", o.dias, { estilo: "entrada", formato: "0" });
-  escrever(custos, "A12", "Duplas");
+  escrever(custos, "A12", o.semAjudante ? "Eletricistas" : "Duplas");
   escrever(custos, "B12", o.duplas, { estilo: "entrada", formato: "0" });
   escrever(custos, "A13", "Custo total MO", { estilo: "total" });
   escrever(custos, "B13", { formula: "B10*B11*B12", result: r.mo }, { estilo: "total", formato: MOEDA });
-  escrever(custos, "C13", "dias × duplas × custo da dupla", { semBorda: true });
+  escrever(custos, "C13", o.semAjudante ? "dias × eletricistas × custo por dia" : "dias × duplas × custo da dupla", { semBorda: true });
 
   // Ferramentas: no mínimo 5 linhas
   const nF = Math.max(5, o.ferramentas.length);
@@ -154,12 +156,12 @@ export async function gerarExcel(o: Orcamento): Promise<Blob> {
   secao(resumo, 4, "Parâmetros", "C");
   cabecalho(resumo, 5, ["Parâmetro", "Valor", "Obs."]);
   const params: [string, number, string][] = [
-    ["Markup mão de obra", o.markupMO, "MO + 100%"],
-    ["Markup ferramentas", o.markupFerramentas, "Aluguel + 15%"],
-    ["Markup materiais - comprado no meu CNPJ", o.markupMaterialCnpj, "+40%"],
-    ["Markup materiais - faturamento direto", o.markupMaterialDireto, "+15% (CNPJ do cliente)"],
+    ["Markup mão de obra", o.markupMO, "Acréscimo sobre a mão de obra"],
+    ["Markup ferramentas", o.markupFerramentas, "Acréscimo sobre o aluguel"],
+    ["Markup materiais - comprado no meu CNPJ", o.markupMaterialCnpj, "Acréscimo sobre o material"],
+    ["Markup materiais - faturamento direto", o.markupMaterialDireto, "Acréscimo (CNPJ do cliente)"],
     ["Imposto na nota", o.imposto, "% que você paga na emissão"],
-    ["Margem mínima desejada", o.margemMin, "Abaixo disso: prejuízo"],
+    ["Margem mínima desejada", o.margemMin, "Abaixo disso: lucro sem folga"],
     ["Margem máxima desejada", o.margemMax, "Acima disso: perde concorrência"],
     ["Material extra (aditivo)", MARKUP_ADITIVO, "Preço de mercado + 15%"],
   ];
@@ -188,7 +190,7 @@ export async function gerarExcel(o: Orcamento): Promise<Blob> {
   cabecalho(resumo, 18, ["Item", "Valor", "Obs."]);
   escrever(resumo, "A19", "Mão de obra");
   escrever(resumo, "B19", { formula: "Custos!B13", result: r.mo }, { estilo: "vinculo", formato: MOEDA });
-  escrever(resumo, "C19", "dias × duplas × custo da dupla");
+  escrever(resumo, "C19", o.semAjudante ? "dias × eletricistas × custo por dia" : "dias × duplas × custo da dupla");
   escrever(resumo, "A20", "Ferramentas");
   escrever(resumo, "B20", { formula: `Custos!B${totF}`, result: r.ferramentas }, { estilo: "vinculo", formato: MOEDA });
   escrever(resumo, "C20", "aluguel de equipamentos");
@@ -220,7 +222,7 @@ export async function gerarExcel(o: Orcamento): Promise<Blob> {
   escrever(resumo, "C32", "imposto sobre o preço de venda");
   escrever(resumo, "A33", "RESULTADO (B+C+D−A−E)", { estilo: "total" });
   escrever(resumo, "B33", { formula: "B29-B22-B32", result: r.resultado }, { estilo: "total", formato: MOEDA });
-  escrever(resumo, "C33", "lucro depois do imposto", { estilo: "total" });
+  escrever(resumo, "C33", "lucro pela regra, depois do imposto", { estilo: "total" });
   escrever(resumo, "A34", "Margem sobre a venda");
   escrever(resumo, "B34", { formula: "IF(B29=0,0,B33/B29)", result: r.margem }, { formato: PERCENTUAL });
   escrever(resumo, "C34", "resultado ÷ preço de venda");
@@ -247,6 +249,21 @@ export async function gerarExcel(o: Orcamento): Promise<Blob> {
   escrever(resumo, "A40", "VALOR RECOMENDADO A COBRAR", { estilo: "total" });
   escrever(resumo, "B40", { formula: "IF(B22=0,0,IF(B34<B11,B38,IF(B34>B12,B39,B29)))", result: r.recomendado ?? 0 }, { estilo: "total", formato: MOEDA });
   escrever(resumo, "C40", "Dentro da faixa: preço da regra", { estilo: "total" });
+  escrever(resumo, "A41", "Lucro cobrando o recomendado", { estilo: "total" });
+  escrever(resumo, "B41", { formula: "B40-B22-B40*B10", result: r.lucroRecomendado ?? 0 }, { estilo: "total", formato: MOEDA });
+  escrever(resumo, "C41", "valor - custo - imposto", { estilo: "total" });
+  escrever(resumo, "A42", "Margem cobrando o recomendado");
+  escrever(resumo, "B42", { formula: "IF(B40=0,0,B41/B40)", result: r.margemRecomendada ?? 0 }, { formato: PERCENTUAL });
+  escrever(resumo, "C42", "lucro ÷ valor cobrado");
+  if (o.valorFechado !== null) {
+    const s = simularPreco(o, o.valorFechado);
+    escrever(resumo, "A43", "Valor combinado com o cliente", { estilo: "total" });
+    escrever(resumo, "B43", o.valorFechado, { estilo: "entrada", formato: MOEDA });
+    escrever(resumo, "C43", "digitado na negociação", { estilo: "total" });
+    escrever(resumo, "A44", "Lucro no valor combinado");
+    escrever(resumo, "B44", { formula: "B43-B22-B43*B10", result: s.lucro }, { formato: MOEDA });
+    escrever(resumo, "C44", "valor - custo - imposto");
+  }
 
   const dicas = [
     "Orce os materiais sem desconto e feche o preço deixando claro quais materiais estão contemplados.",
@@ -254,7 +271,7 @@ export async function gerarExcel(o: Orcamento): Promise<Blob> {
     `Deixe claro no contrato que qualquer material extra será cobrado a preço de mercado + ${MARKUP_ADITIVO}%.`,
   ];
   dicas.forEach((t, i) => {
-    const l = 42 + i;
+    const l = 46 + i;
     resumo.mergeCells(`A${l}:C${l}`);
     const c = escrever(resumo, `A${l}`, t, { semBorda: true, quebra: true });
     c.font = { name: "Arial", size: 9, italic: true };

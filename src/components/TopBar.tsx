@@ -1,48 +1,31 @@
+import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
-import { IconAjustes, IconRaio, IconVoltar } from "./Icons";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   titulo: string;
   onVoltar?: () => void;
-  onAjustes?: () => void;
-  /** "Passo 2 de 4" */
-  passo?: { atual: number; total: number };
+  /** Ações à direita */
   extra?: ReactNode;
+  /** Conteúdo abaixo da linha do título (ex.: progresso) */
+  children?: ReactNode;
 }
 
-export default function TopBar({ titulo, onVoltar, onAjustes, passo, extra }: Props) {
+export default function TopBar({ titulo, onVoltar, extra, children }: Props) {
   return (
-    <header className="topbar">
-      <div className="topbar-inner">
-        {onVoltar ? (
-          <button type="button" className="icon-btn" aria-label="Voltar" onClick={onVoltar}>
-            <IconVoltar />
-          </button>
-        ) : (
-          <span className="logo-bolt" aria-hidden="true">
-            <IconRaio />
-          </span>
-        )}
-        <h1>{titulo}</h1>
-        {extra}
-        {onAjustes && (
-          <button type="button" className="icon-btn" aria-label="Ajustes" onClick={onAjustes}>
-            <IconAjustes />
-          </button>
-        )}
-      </div>
-      {passo && (
-        <div className="progress">
-          <div className="progress-inner">
-            <div className="progress-label">
-              Passo {passo.atual} de {passo.total}
-            </div>
-            <div className="progress-track" role="progressbar" aria-valuemin={1} aria-valuemax={passo.total} aria-valuenow={passo.atual}>
-              <div className="progress-fill" style={{ width: `${(passo.atual / passo.total) * 100}%` }} />
-            </div>
-          </div>
+    <header className="sticky top-0 z-30 border-b bg-background pt-safe-top">
+      <div className="mx-auto w-full max-w-content px-2">
+        <div className="flex min-h-14 items-center gap-1">
+          {onVoltar && (
+            <Button variant="ghost" size="icon" aria-label="Voltar" onClick={onVoltar}>
+              <ChevronLeft className="!size-7" aria-hidden="true" />
+            </Button>
+          )}
+          <h1 className="min-w-0 flex-1 truncate px-1 text-body-lg font-semibold">{titulo}</h1>
+          {extra}
         </div>
-      )}
+        {children && <div className="px-2 pb-3">{children}</div>}
+      </div>
     </header>
   );
 }
