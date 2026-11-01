@@ -326,7 +326,7 @@ describe("backup", () => {
       validadeDias: 30,
       valorFechado: 70000,
       parcelas: PLANOS[1].parcelas,
-      aceite: { nome: "Maria", assinatura: "data:image/png;base64,x", em: 4 },
+      aceite: { nome: "Maria", assinatura: "data:image/png;base64,iVBORw0KGgo=", em: 4 },
       diasReais: 16,
       gastos: [{ id: "g", criadoEm: 1, categoria: "ferramenta", descricao: "Andaime", valor: 300 }],
       aditivos: [{ id: "a", criadoEm: 1, descricao: "Tomadas", custo: 100, aprovado: true }],
@@ -342,6 +342,15 @@ describe("backup", () => {
     expect(o.semAjudante).toBe(false);
     expect(o.gastos).toEqual([]);
     expect(calcular(o)).toEqual(calcular(orcamentoExemplo()));
+  });
+  it("backup não coloca endereço externo no lugar do logo ou da assinatura", () => {
+    const png = "data:image/png;base64,iVBORw0KGgo=";
+    expect(normalizarAjustes({ empresa: { logo: "https://exemplo.com/espiao.png" } }).empresa.logo).toBe("");
+    expect(normalizarAjustes({ empresa: { logo: "data:image/svg+xml;base64,PHN2Zz4=" } }).empresa.logo).toBe("");
+    expect(normalizarAjustes({ empresa: { logo: `data:image/png;base64,${"A".repeat(3_000_000)}` } }).empresa.logo).toBe("");
+    expect(normalizarAjustes({ empresa: { logo: png } }).empresa.logo).toBe(png);
+    expect(normalizarOrcamento({ aceite: { nome: "X", assinatura: "https://exemplo.com/a.png", em: 1 } }).aceite).toBeNull();
+    expect(normalizarOrcamento({ aceite: { nome: "X", assinatura: png, em: 1 } }).aceite?.assinatura).toBe(png);
   });
   it("ajustes antigos ganham empresa vazia e mantêm os valores", () => {
     const a = normalizarAjustes({ diariaEletricista: 300 });

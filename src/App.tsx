@@ -3,6 +3,7 @@ import { toast } from "./components/ui/sonner";
 import { AJUSTES_PADRAO, novoOrcamento, orcamentoDeModelo, orcamentoExemplo } from "./domain/defaults";
 import type { Ajustes, Orcamento } from "./domain/types";
 import Aceite from "./screens/Aceite";
+import AceiteConfirmado from "./screens/AceiteConfirmado";
 import Home from "./screens/Home";
 import ModoCliente from "./screens/ModoCliente";
 import Obra from "./screens/Obra";
@@ -23,6 +24,7 @@ type Tela =
   | { nome: "cliente" }
   | { nome: "pagamento" }
   | { nome: "aceite" }
+  | { nome: "aceite-confirmado" }
   | { nome: "obra" };
 
 interface EstadoHistorico {
@@ -31,6 +33,9 @@ interface EstadoHistorico {
 }
 
 const HOME: Tela = { nome: "home" };
+
+/** Telas que o cliente vê: o gesto de voltar não sai delas, porque a tela anterior mostra custo e lucro. */
+const telaDoCliente = (t: Tela) => t.nome === "cliente" || t.nome === "aceite-confirmado";
 
 export default function App() {
   const [tela, setTela] = useState<Tela>(HOME);
@@ -42,11 +47,19 @@ export default function App() {
   const sujo = useRef(false);
   const orcRef = useRef<Orcamento | null>(null);
   orcRef.current = orc;
+  const telaRef = useRef<Tela>(tela);
+  telaRef.current = tela;
+  const saidaLiberada = useRef(false);
 
   useEffect(() => {
     lerAjustes().then(setAjustes).catch(() => undefined);
     history.replaceState({ tela: HOME, idx: 0 } satisfies EstadoHistorico, "");
     const onPop = (e: PopStateEvent) => {
+      if (telaDoCliente(telaRef.current) && !saidaLiberada.current) {
+        history.pushState({ tela: telaRef.current, idx: idx.current } satisfies EstadoHistorico, "");
+        return;
+      }
+      saidaLiberada.current = false;
       const est = e.state as EstadoHistorico | null;
       document.documentElement.dataset.nav = (est?.idx ?? 0) < idx.current ? "voltar" : "avancar";
       idx.current = est?.idx ?? 0;
@@ -151,6 +164,18 @@ export default function App() {
     if (precisaOrc && !orc) ir(HOME, true);
   }, [precisaOrc, orc, ir]);
 
+  // Obra aceita não volta aos passos nem à assinatura, nem pelo botão de voltar do celular.
+  const travada = orc?.situacao === "aceito" && (tela.nome === "passo" || tela.nome === "aceite");
+  useEffect(() => {
+    if (travada) ir({ nome: "resultado" }, true);
+  }, [travada, ir]);
+  if (travada) return null;
+
+  const sairDaTelaDoCliente = () => {
+    saidaLiberada.current = true;
+    voltar();
+  };
+
   if (tela.nome === "ajustes") {
     return (
       <Settings
@@ -210,9 +235,10 @@ export default function App() {
     );
   }
 
-  if (tela.nome === "cliente" && orc) return <ModoCliente orc={orc} ajustes={ajustes} onSair={voltar} />;
+  if (tela.nome === "cliente" && orc) return <ModoCliente orc={orc} ajustes={ajustes} onSair={sairDaTelaDoCliente} />;
+  if (tela.nome === "aceite-confirmado" && orc) return <AceiteConfirmado orc={orc} onSair={sairDaTelaDoCliente} />;
   if (tela.nome === "pagamento" && orc) return <Pagamento orc={orc} editar={editar} onVoltar={voltar} />;
-  if (tela.nome === "aceite" && orc) return <Aceite orc={orc} ajustes={ajustes} editar={editar} onVoltar={voltar} />;
+  if (tela.nome === "aceite" && orc) return <Aceite orc={orc} ajustes={ajustes} editar={editar} onVoltar={voltar} onConfirmado={() => ir({ nome: "aceite-confirmado" }, true)} />;
   if (tela.nome === "obra" && orc) return <Obra orc={orc} ajustes={ajustes} editar={editar} onVoltar={voltar} />;
 
   return (

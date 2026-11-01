@@ -5,7 +5,6 @@ import TopBar from "@/components/TopBar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/sonner";
 import { brl } from "@/domain/format";
 import { mudarSituacao } from "@/domain/funil";
 import { dadosProposta } from "@/domain/proposta";
@@ -16,6 +15,7 @@ interface Props {
   ajustes: Ajustes;
   editar: (parcial: Partial<Orcamento>) => void;
   onVoltar: () => void;
+  onConfirmado: () => void;
 }
 
 const TINTA = "#171B21";
@@ -79,7 +79,7 @@ function QuadroAssinatura({ onMudou, canvasRef }: { onMudou: (temTinta: boolean)
   );
 }
 
-export default function Aceite({ orc, ajustes, editar, onVoltar }: Props) {
+export default function Aceite({ orc, ajustes, editar, onVoltar, onConfirmado }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [nome, setNome] = useState(orc.aceite?.nome ?? orc.cliente);
   const [temTinta, setTemTinta] = useState(false);
@@ -97,8 +97,7 @@ export default function Aceite({ orc, ajustes, editar, onVoltar }: Props) {
     const c = canvas.current;
     if (!c) return;
     editar({ ...mudarSituacao(orc, "aceito"), aceite: { nome: nome.trim(), assinatura: c.toDataURL("image/png"), em: Date.now() } });
-    toast.success("Aceite registrado");
-    onVoltar();
+    onConfirmado();
   }
 
   return (

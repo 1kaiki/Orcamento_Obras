@@ -1,16 +1,12 @@
-import { useRef } from "react";
+import BotaoSegurar from "@/components/BotaoSegurar";
 import Dinheiro from "@/components/Dinheiro";
 import { brl } from "@/domain/format";
 import { dadosProposta } from "@/domain/proposta";
 import type { Ajustes, Orcamento } from "@/domain/types";
 
-const TEMPO_SEGURAR = 800;
-
-/** Tela para mostrar ao cliente: só o que está na proposta. Sair exige segurar, para a margem não aparecer sem querer. */
+/** Tela para mostrar ao cliente: só o que está na proposta. */
 export default function ModoCliente({ orc, ajustes, onSair }: { orc: Orcamento; ajustes: Ajustes; onSair: () => void }) {
   const p = dadosProposta(orc, ajustes.empresa);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
-  const soltar = () => clearTimeout(timer.current);
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-content flex-col gap-section bg-background px-gutter pb-section pt-[calc(1.5rem+env(safe-area-inset-top,0px))]">
@@ -66,22 +62,7 @@ export default function ModoCliente({ orc, ajustes, onSair }: { orc: Orcamento; 
         </section>
       )}
 
-      <button
-        type="button"
-        className="mt-auto min-h-touch select-none rounded-md text-caption text-muted-foreground [touch-action:none]"
-        onPointerDown={() => {
-          timer.current = setTimeout(onSair, TEMPO_SEGURAR);
-        }}
-        onPointerUp={soltar}
-        onPointerLeave={soltar}
-        onPointerCancel={soltar}
-        onContextMenu={(e) => e.preventDefault()}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") onSair();
-        }}
-      >
-        Segure aqui para sair
-      </button>
+      <BotaoSegurar onSair={onSair} />
     </main>
   );
 }

@@ -13,6 +13,13 @@ const numOuNulo = (v: unknown): number | null => (typeof v === "number" && isFin
 const txt = (v: unknown): string => (typeof v === "string" ? v : "");
 const lista = (v: unknown): Record<string, unknown>[] => (Array.isArray(v) ? (v as Record<string, unknown>[]) : []);
 
+const TAMANHO_MAXIMO_IMAGEM = 3_000_000;
+/** Logo e assinatura vão para a tela e para o PDF: só PNG embutido, nunca um endereço vindo de um arquivo de backup. */
+const pngEmbutido = (v: unknown): string => {
+  const s = txt(v);
+  return s.length <= TAMANHO_MAXIMO_IMAGEM && /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(s) ? s : "";
+};
+
 const SITUACOES: SituacaoOrcamento[] = ["rascunho", "enviado", "aceito", "perdido"];
 const MOTIVOS: MotivoPerda[] = ["preco", "concorrente", "desistiu", "sem_resposta", "outro"];
 const CATEGORIAS: CategoriaGasto[] = ["material", "ferramenta", "outro"];
@@ -69,7 +76,7 @@ export function normalizarOrcamento(raw: unknown): Orcamento {
     validadeDias: num(r.validadeDias, base.validadeDias),
     valorFechado: numOuNulo(r.valorFechado),
     parcelas: lista(r.parcelas).map((p) => ({ rotulo: txt(p.rotulo), percentual: num(p.percentual, 0) })),
-    aceite: aceite && txt(aceite.assinatura) ? { nome: txt(aceite.nome), assinatura: txt(aceite.assinatura), em: num(aceite.em, base.criadoEm) } : null,
+    aceite: aceite && pngEmbutido(aceite.assinatura) ? { nome: txt(aceite.nome), assinatura: pngEmbutido(aceite.assinatura), em: num(aceite.em, base.criadoEm) } : null,
     diasReais: numOuNulo(r.diasReais),
     gastos: lista(r.gastos).map((g) => ({
       id: txt(g.id) || novoId(),
@@ -106,7 +113,7 @@ export function normalizarAjustes(raw: unknown): Ajustes {
     margemMin: num(r.margemMin, p.margemMin),
     margemMax: num(r.margemMax, p.margemMax),
     validadeDias: num(r.validadeDias, p.validadeDias),
-    empresa: { nome: txt(e.nome), cnpj: txt(e.cnpj), telefone: txt(e.telefone), logo: txt(e.logo) },
+    empresa: { nome: txt(e.nome), cnpj: txt(e.cnpj), telefone: txt(e.telefone), logo: pngEmbutido(e.logo) },
   };
 }
 
